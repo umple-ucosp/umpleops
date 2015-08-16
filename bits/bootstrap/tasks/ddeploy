@@ -1,0 +1,10 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+notify "FIRST deploy..."
+capbash deploy $1 $2
+debug "DONE, FIRST deploy."
+
+notify "SECOND deploy..."
+capbash deploy $1 $2
+debug "DONE, second deploy."

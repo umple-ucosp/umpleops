@@ -1,0 +1,39 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+. ./bits/bootstrap/env
+
+set -euo pipefail ; IFS=$'\n\t'
+
+TARGET=${1} # the ip of the server
+NODE=${2-helloworld}
+
+if [[ -z "$2" ]]; then
+  if [[ -e ./nodes/default ]]; then
+    NODE=default
+  fi
+fi
+
+if [ -z "$TARGET" ]; then
+  notify "USAGE: capbash nnohup <Target IP/host> <node>"
+  notify "   eg: capbash nnohup my-server.localnet helloworld"
+  exit 0
+fi
+
+if [ "$TARGET" == "local" ] || [ "$TARGET" == "local" ]; then
+  notify "Deploying $NODE locally ..."
+  nohup sh -c "notify 'FIRST deploy...' ; ./nodes/$NODE ; debug 'DONE, FIRST deploy.' ; notify 'SECOND deploy...' ; ./nodes/$NODE ; debug 'DONE, second deploy.'" &
+else
+  OWNER=${3-root}
+  GROUP=${4-$OWNER}
+  REMOTE_DIR=${REMOTE_DIR-/var/capbash} # where to save on the remote server
+  SSH_LOGLEVEL=${SSH_LOGLEVEL-1}
+  AUTHORIZED_KEYS_FILENAME=./assets/${OWNER}_authorized_keys
+  if [ -f $AUTHORIZED_KEYS_FILENAME ]; then
+    debug "Uploading Authorized Keys ($OWNER) For Bootstrap..."
+    ssh $OWNER@$TARGET 'mkdir -p ~/.ssh' > /dev/null
+    scp $AUTHORIZED_KEYS_FILENAME $OWNER@$TARGET:~/.ssh/authorized_keys > /dev/null
+  else
+    debug "Skipping authorized keys, edit $AUTHORIZED_KEYS_FILENAME if you want to override $TARGET"
+  fi
+  (cd ./bits/bootstrap && bundle exec cap capbash:nnohup TARGET=$TARGET NODE=$NODE OWNER=$OWNER GROUP=$GROUP REMOTE_DIR=$REMOTE_DIR)
+fi

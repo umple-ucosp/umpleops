@@ -1,0 +1,66 @@
+#!/bin/bash
+# Black        0;30     Dark Gray     1;30
+# Blue         0;34     Light Blue    1;34
+# Green        0;32     Light Green   1;32
+# Cyan         0;36     Light Cyan    1;36
+# Red          0;31     Light Red     1;31
+# Purple       0;35     Light Purple  1;35
+# Brown/Orange 0;33     Yellow        1;33
+# Light Gray   0;37     White         1;37
+
+# MAC has different names
+if [[ `uname` == "Darwin" ]]; then
+  BLUE='\x1B[0;34m'
+  LIGHT_GREY='\x1B[0;37m'
+  DARK_RED='\x1B[1;31m'
+  LIGHT_RED='\x1B[0;31m'
+  LIGHT_GREEN='\x1B[0;32m'
+  NC='\x1B[0m' # No Color
+else
+  BLUE='\e[0;34m'
+  LIGHT_GREY='\e[0;37m'
+  DARK_RED='\e[1;31m'
+  LIGHT_RED='\e[0;31m'
+  LIGHT_GREEN='\e[0;32m'
+  NC='\e[0m' # No Color
+fi
+
+exec 3>&2 # logging stream (file descriptor 3) defaults to STDERR
+
+DEBUG_LEVEL=0
+INFO_LEVEL=1
+WARNING_LEVEL=2
+ERROR_LEVEL=3
+FATAL_LEVEL=4
+
+error() { log $ERROR_LEVEL "  ${DARK_RED}ERROR${NC}   [${LIGHT_GREEN}$(date +"%Y-%m-%d %H:%M:%S")${NC}] ${DARK_RED}$1${NC}"; }
+warn() { log $WARNING_LEVEL "  ${LIGHT_RED}WARNING${NC} [${LIGHT_GREEN}$(date +"%Y-%m-%d %H:%M:%S")${NC}] ${LIGHT_RED}$1${NC}"; }
+notify() { log $INFO_LEVEL "  ${BLUE}INFO${NC}    [${LIGHT_GREEN}$(date +"%Y-%m-%d %H:%M:%S")${NC}] $1${NC}"; }
+debug() { log $DEBUG_LEVEL "  ${LIGHT_GREY}DEBUG${NC}   [${LIGHT_GREEN}$(date +"%Y-%m-%d %H:%M:%S")${NC}] ${LIGHT_GREY}$1${NC}"; }
+
+error_all() { [[ "$1" != "/dev/null" ]] && (tail -n 100 $1 > $1.last ; while read line; do error "$line" ; done < $1.last ;) }
+warn_all() { [[ "$1" != "/dev/null" ]] && (tail -n 100 $1 > $1.last ; while read line; do warn "$line" ; done < $1.last ;) }
+notify_all() { [[ "$1" != "/dev/null" ]] && (tail -n 100 $1 > $1.last ; while read line; do notify "$line" ; done < $1.last ;) }
+debug_all() { [[ "$1" != "/dev/null" ]] && (tail -n 100 $1 > $1.last ; while read line; do debug "$line" ; done < $1.last ;) }
+
+log() {
+  LOGLEVEL=${LOGLEVEL-$INFO_LEVEL}
+  if [ "$LOGLEVEL" -le "$1" ] && [ ! -z "$2" ]; then
+    if [[ `uname` == "Darwin" ]]; then
+      echo -e "$2" >&3
+    else
+      # Expand escaped characters, wrap at 70 chars, indent wrapped lines
+      echo -e "$2" | sed '2~1s/^/  /' >&3
+    fi
+  fi
+}
+
+export -f error
+export -f warn
+export -f notify
+export -f debug
+
+export -f error_all
+export -f warn_all
+export -f notify_all
+export -f debug_all

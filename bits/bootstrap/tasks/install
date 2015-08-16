@@ -1,0 +1,44 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+BIT=$1
+
+if [[ "$BIT" == "--all" ]]; then
+  # todo, use capbash ls to automate this
+  capbash install apache
+  capbash install cron
+  capbash install deploykeys
+  capbash install docker
+  capbash install drupal
+  capbash install elixir
+  capbash install git
+  capbash install monit
+  capbash install mysql
+  capbash install nginx
+  capbash install phoenix
+  capbash install rails
+  capbash install tarball
+else
+  GIT_OUTPUT=/tmp/install_${BIT}.log
+  GIT_URL=https://github.com/capbash/capbash-$BIT
+  notify "Installing $BIT ($GIT_URL)..."
+  capbash bitremote $BIT
+
+  if [[ -e "./bits/$BIT" ]]; then
+    debug "  -- Subtree bits/$BIT already appears to exist, not adding"
+  else
+    debug "  -- git subtree add --prefix=bits/$BIT --squash $BIT master"
+    GIT_ERRORS=$(git subtree add --prefix=bits/$BIT --squash $BIT master > ${GIT_OUTPUT} 2>&1)
+    ERROR="Unable to install subtree $BIT from $GIT_URL due to ..." ./bits/bootstrap/failonerrors $? $GIT_OUTPUT
+    [ $? -ne 0 ] && exit 1
+  fi
+
+  BOOTSTRAP_FILE=./bits/$BIT/bootstrap
+  if [ -f $BOOTSTRAP_FILE ]; then
+    debug "  -- bootstrapping module"
+    $BOOTSTRAP_FILE
+  fi
+  notify "DONE, Installing $BIT ($GIT_URL)."
+fi
+
+

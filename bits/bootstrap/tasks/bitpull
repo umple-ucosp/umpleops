@@ -1,0 +1,31 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+BIT=$1
+ARGS=${2-""}
+
+if [[ "$BIT" == "--all" ]]; then
+  # todo, use capbash ls to automate this
+  capbash bitpull apache
+  capbash bitpull cron
+  capbash bitpull deploykeys
+  capbash bitpull docker
+  capbash bitpull drupal
+  capbash bitpull elixir
+  capbash bitpull git
+  capbash bitpull monit
+  capbash bitpull mysql
+  capbash bitpull nginx
+  capbash bitpull phoenix
+  capbash bitpull rails
+  capbash bitpull tarball
+elif [[ ! -e "bits/$BIT" ]]; then
+  debug "Skipping uninstalled project $BIT"
+else
+  GIT_OUTPUT=/tmp/bitpull_${BIT}.log
+  notify "Pulling subtree $BIT ..."
+  debug "  -- git subtree pull $ARGS --squash --prefix=bits/$BIT $BIT master"
+  GIT_ERRORS=$(git subtree pull $ARGS --squash --prefix=bits/$BIT $BIT master > ${GIT_OUTPUT} 2>&1)
+  ERROR="Unable to pull subtree $BIT due to ..." ./bits/bootstrap/failonerrors $? $GIT_OUTPUT
+  [ $? -ne 0 ] && exit 1
+fi

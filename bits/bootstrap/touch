@@ -1,0 +1,17 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+set -euo pipefail ; IFS=$'\n\t'
+
+TOUCH_OUTPUT=/tmp/touch.log
+OWNER=${OWNER-$USER}
+FILE=$1
+
+SCRIPT_OUTPUT=$(touch ${FILE} > $TOUCH_OUTPUT 2>&1)
+ERROR="Unable to touch ${FILE} due to ..." ./bits/bootstrap/failonerrors $? $TOUCH_OUTPUT
+[ $? -ne 0 ] && exit 1
+debug "  -- Touched ${FILE}"
+if [[ "$OWNER" != "$USER" ]]; then
+  SCRIPT_OUTPUT=$(chown $OWNER $FILE > $TOUCH_OUTPUT 2>&1)
+  ERROR="Unable to chown to $OWNER ${FILE} due to ..." ./bits/bootstrap/failonerrors $? $TOUCH_OUTPUT
+  [ $? -ne 0 ] && exit 1
+fi

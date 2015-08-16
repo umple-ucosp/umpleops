@@ -1,0 +1,33 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+OWNER=${OWNER-$USER}
+SRC_FILE=$SRC_FILE
+TARGET_DIR=$TARGET_DIR
+TARGET_NAME=$TARGET_NAME
+UNZIP_OUTPUT=/tmp/unzip.log
+
+if [[ "`which unzip 2> /dev/null`" == "" ]]; then
+  if [[ "$OS" == "ubuntu" ]]; then
+    debug "  -- Installing wget via apt-get"
+    $SUDO apt-get update > $UNZIP_OUTPUT 2>&1
+    ERROR="Unable to update apt-get due to ..." ./bits/bootstrap/failonerrors $? $UNZIP_OUTPUT
+    [ $? -ne 0 ] && exit 1
+
+    $SUDO apt-get install -y unzip > $UNZIP_OUTPUT 2>&1
+    ERROR="Unable to install unzip due to ..." ./bits/bootstrap/failonerrors $? $UNZIP_OUTPUT
+    [ $? -ne 0 ] && exit 1
+  else
+    error "  -- Don't know how to install unzip on $OS"
+    exit 1
+  fi
+fi
+
+if [[ -e "$TARGET_DIR/$TARGET_NAME" ]]; then
+  debug "  -- Already unzipped $SRC_FILE to $TARGET_DIR/$TARGET_NAME"
+else
+  OWNER=$OWNER ./bits/bootstrap/mkdir $TARGET_DIR
+  unzip $SRC_FILE -d $TARGET_DIR > $UNZIP_OUTPUT 2>&1
+  ERROR="Unable to unzip due to ..." ./bits/bootstrap/failonerrors $? $UNZIP_OUTPUT
+  [ $? -ne 0 ] && exit 1
+fi

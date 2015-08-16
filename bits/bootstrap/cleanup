@@ -1,0 +1,3 @@
+#!/bin/bash
+(cd $DIR && find . -type f -name "*.deleteme" | xargs rm -f)
+(cd $DIR && find . -type f -name ".DS_Store" | xargs rm -f)

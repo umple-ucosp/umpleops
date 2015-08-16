@@ -1,0 +1,63 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+#-----------
+# Configurations
+#-----------
+
+export BIN_DIR=${BIN_DIR-/usr/local/bin}
+OWNER=${OWNER-$USER}
+
+#-----------
+# Install Script
+#-----------
+
+notify "Install bootstrap..."
+
+BOOTSTRAP_OUTPUT=/tmp/bootstrap.log
+
+OWNER=$OWNER ./bits/bootstrap/mkdir BIN_DIR
+
+./bits/bootstrap/cp ./bits/bootstrap/files/helloworld $BIN_DIR/helloworld
+debug "  -- Adding $BIN_DIR/helloworld"
+chmod 755 $BIN_DIR/helloworld
+debug "  -- Adding $BIN_DIR/helloworld"
+
+if [[ ! -e "$HOME/.vimrc" ]]; then
+  echo "set nocompatible" > "$HOME/.vimrc"
+  debug "  -- Setting nocompatible for 'easier' VIM control ($HOME/.vimrc)"
+else
+  debug "  -- Skipping nocompatible check, file already exists ($HOME/.vimrc)"
+fi
+
+debug "  -- Making logger available on node"
+./bits/bootstrap/cp ./bits/bootstrap/logging $BIN_DIR/logging
+
+debug "  -- Making capbashenv available on node"
+./bits/bootstrap/cp ./bits/bootstrap/env $BIN_DIR/capbashenv
+
+debug "  -- Making resolvevars available on node"
+./bits/bootstrap/cp ./bits/bootstrap/resolvevars $BIN_DIR/resolvevars
+
+if [[ "`which wget 2> /dev/null`" == "" ]]; then
+  if [[ "$OS" == "ubuntu" ]]; then
+    debug "  -- Installing wget via apt-get"
+    apt-get install -y wget
+  elif [[ "$OS" != "mac" ]]; then
+    debug "  -- Installing wget via yum"
+    yum install -y wget
+  else
+    if [[ "`which brew 2> /dev/null`" == "" ]]; then
+      error "Missing 'wget', and 'brew'"
+      exit 1
+    else
+      notify "  -- Installing wget via brew"
+      SCRIPT_OUTPUT=$(brew install -y wget > $BOOTSTRAP_OUTPUT 2>&1)
+      ERROR="Unable to install wget via brew due to ..." ./bits/bootstrap/failonerrors $? $BOOTSTRAP_OUTPUT
+      [ $? -ne 0 ] && exit 1
+      debug $SCRIPT_OUTPUT
+    fi
+  fi
+fi
+
+notify "DONE Install bootstrap."

@@ -1,0 +1,13 @@
+#!/bin/bash
+SUBMODULE=$1
+
+SUBMODULE_FILE=./bits/$SUBMODULE
+if [ -e $SUBMODULE_FILE ]; then
+  echo "Removing module $SUBMODULE_FILE"
+  git submodule deinit $SUBMODULE_FILE
+  git rm $SUBMODULE_FILE
+else
+  echo "Unknown module $SUBMODULE_FILE"
+fi
+
+
