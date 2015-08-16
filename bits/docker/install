@@ -1,0 +1,164 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+#-----------
+# Configurations
+#-----------
+
+export LAUNCHER_DIR=${LAUNCHER_DIR-/var/local}
+export DOCKER_LAUNCHER_DIR=${DOCKER_LAUNCHER_DIR-$LAUNCHER_DIR/docker}
+LAUNCHER_OWNER=${LAUNCHER_OWNER-$USER}
+DOCKER_FORCE_INSTALL=${DOCKER_FORCE_INSTALL-false}
+DOCKER_BASE_SIZE=${DOCKER_BASE_SIZE-10g}
+DOCKER_LOOPDATA_SIZE=${DOCKER_LOOPDATA_SIZE-100g}
+DOCKER_LOOPMETADATA_SIZE=${DOCKER_LOOPMETADATA_SIZE-2g}
+
+#-----------
+# Install Script
+#-----------
+
+notify "Installing DOCKER ($OS)..."
+
+if [[ "$LOGLEVEL" -le "$DEBUG_LEVEL" ]]; then
+  DOCKER_OUTPUT=${DOCKER_LAUNCHER_DIR}/docker_install.log
+else
+  DOCKER_OUTPUT=/dev/null
+fi
+
+if [[ `groups $LAUNCHER_OWNER | grep docker` == ""  ]] && [[ "$OS" == "ubuntu" ]]; then
+  notify "  -- Adding $LAUNCHER_OWNER to group docker. (will require logout/login)"
+  $SUDO groupadd -f docker
+  $SUDO gpasswd -a ${LAUNCHER_OWNER} docker > $DOCKER_OUTPUT 2>&1
+  error "Please logout and log back in and re-execute command."
+  exit 2
+fi
+
+if [[ "$DOCKER_FORCE_INSTALL" == true ]]; then
+  notify "  -- forcing a install of docker if it already existed"
+  if [[ -e ${DOCKER_LAUNCHER_DIR}/kill ]]; then
+    ${DOCKER_LAUNCHER_DIR}/kill
+  fi
+  rm -rf ${DOCKER_LAUNCHER_DIR}
+fi
+
+OWNER=$LAUNCHER_OWNER ./bits/bootstrap/mkdir LAUNCHER_DIR DOCKER_LAUNCHER_DIR $DOCKER_LAUNCHER_DIR/src
+
+if [[ "$OS" == "ubuntu" ]]; then
+  if [[ -z "`which ufw 2> /dev/null`"  ]] && [[ ! -e "${DOCKER_LAUNCHER_DIR}/ufw.done" ]]; then
+    notify "  -- Configuring /etc/default/ufw"
+    mkdir -p /etc/default
+    sed -i 's|DEFAULT_FORWARD_POLICY="DROP"|DEFAULT_FORWARD_POLICY="ACCEPT"|g' /etc/default/ufw
+    ufw reload > $DOCKER_OUTPUT 2>&1
+    debug_all $DOCKER_OUTPUT
+    ufw allow 4243/tcp > $DOCKER_OUTPUT 2>&1
+    debug_all $DOCKER_OUTPUT
+    touch "${DOCKER_LAUNCHER_DIR}/ufw.done"
+  else
+    debug "  -- Already configured /etc/default/ufw"
+  fi
+fi
+
+if [[ "$DOCKER_FORCE_INSTALL" == true ]] || [[ "`which docker 2> /dev/null`" == "" ]]; then
+  notify "  -- install docker on $OS"
+  if [[ "$OS" == "ubuntu" ]]; then
+    $SUDO apt-get update > $DOCKER_OUTPUT 2>&1
+    debug_all $DOCKER_OUTPUT
+    $SUDO apt-get install -y docker.io > $DOCKER_OUTPUT 2>&1
+    debug_all $DOCKER_OUTPUT
+    $SUDO ln -sf /usr/bin/docker.io /usr/local/bin/docker
+    # $SUDO sed -i '$acomplete -F _docker docker' /etc/bash_completion.d/docker.io
+
+    [ -e /usr/lib/apt/methods/https ] || {
+      $SUDO apt-get update > $DOCKER_OUTPUT 2>&1
+      debug_all $DOCKER_OUTPUT
+      $SUDO apt-get install -y apt-transport-https > $DOCKER_OUTPUT 2>&1
+      debug_all $DOCKER_OUTPUT
+    }
+
+    $SUDO apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 36A1D7869245C8950F966E92D8576A8BA88D21E9 > $DOCKER_OUTPUT 2>&1
+    debug_all $DOCKER_OUTPUT
+
+    $SUDO apt-get install -y curl > $DOCKER_OUTPUT 2>&1
+    debug_all $DOCKER_OUTPUT
+    SCRIPT_OUTPUT=$(curl -s https://get.docker.io/ubuntu/ | $SUDO sh > $DOCKER_OUTPUT 2>&1)
+  elif [[ "$OS" == "mac" ]]; then
+    error "Please install boot2docker (https://docs.docker.com/installation/mac/)"
+    exit 1
+  else
+    SRC_NAME=epel-release-6-8.noarch.rpm SRC_DIR=$DOCKER_LAUNCHER_DIR/src \
+      NAME="EPEL (Extra Packages for Enterprise Linux) repository" \
+      REMOTE_URL=http://dl.fedoraproject.org/pub/epel/6/i386/ \
+      ./bits/bootstrap/wget
+
+    (cd $DOCKER_LAUNCHER_DIR/src && $SUDO rpm -ivh epel-release-6-8.noarch.rpm)
+    # (cd $DOCKER_LAUNCHER_DIR/src && $SUDO rpm -FUvh epel-release-6-8.noarch.rpm)
+
+    debug "  -- Cleaning YUM"
+    $SUDO yum clean all > $DOCKER_OUTPUT 2>&1
+    debug_all $DOCKER_OUTPUT
+
+    debug "  -- installing device-mapper-event-libs"
+    debug "     >> http://stackoverflow.com/questions/27216473/docker-1-3-fails-to-start-on-rhel6-5"
+    $SUDO yum install -y device-mapper-event-libs > $DOCKER_OUTPUT 2>&1
+    debug_all $DOCKER_OUTPUT
+
+    debug "  -- Installing docker-io.x86_64"
+    $SUDO yum install -y docker-io.x86_64 > $DOCKER_OUTPUT 2>&1
+    debug_all $DOCKER_OUTPUT
+
+    debug "  -- Updating docker-io.x86_64"
+    $SUDO yum update -y docker-io.x86_64 > $DOCKER_OUTPUT 2>&1
+    debug_all $DOCKER_OUTPUT
+
+    debug "  -- Enabling docker on startup"
+    $SUDO chkconfig docker on > $DOCKER_OUTPUT 2>&1
+    debug_all $DOCKER_OUTPUT
+  fi
+
+  if [[ "`which docker 2> /dev/null`" == "" ]]; then
+    error "Unable to install docker"
+    exit 1
+  fi
+fi
+
+if [[ "$OS" == "redhat" ]] && [[ "$LAUNCHER_OWNER" != "$USER" ]]; then
+  debug "  -- Granting docker access to ${LAUNCHER_OWNER}"
+  $SUDO gpasswd -a ${LAUNCHER_OWNER} docker > $DOCKER_OUTPUT 2>&1
+  debug_all $DOCKER_OUTPUT
+fi
+
+if [[ -e "/etc/default/docker" ]]; then
+  TEMPLATE=./bits/docker/files/conf LOCATION=/etc/default/docker \
+    $SUDO ./bits/docker/copyif \
+    @DOCKER_BASE_SIZE@ $DOCKER_BASE_SIZE \
+    @DOCKER_LOOPDATA_SIZE@ $DOCKER_LOOPDATA_SIZE \
+    @DOCKER_LOOPMETADATA_SIZE@ $DOCKER_LOOPMETADATA_SIZE \
+    @DOCKER_ARGS@ $DOCKER_ARGS
+fi
+
+notify "  -- Installing helper scripts"
+TEMPLATE=./bits/docker/files/bin LOCATION=$DOCKER_LAUNCHER_DIR ./bits/docker/copyallif
+
+DOCKER_SERVICE=docker
+if [[ "$OS" != "mac" ]] && [[ "`$SUDO service $DOCKER_SERVICE status | grep process`" == "" ]] && [[ "`$SUDO service $DOCKER_SERVICE status | grep \"is running\"`" == "" ]]; then
+  notify "  -- restarting service"
+  $SUDO service $DOCKER_SERVICE restart > $DOCKER_OUTPUT 2>&1
+  debug_all $DOCKER_OUTPUT
+fi
+
+if [[ "$OS" == "mac" ]]; then
+  if [[ "$(docker ps 2>&1)" == *"Cannot connect to the Docker daemon"* ]]; then
+    error "Please run 'source $DOCKER_LAUNCHER_DIR/shell' to enable docker in your shell, and then re-run your deploy script"
+    exit 1
+  fi
+fi
+
+if [[ -e /var/lib/docker ]]; then
+  OWNER=$LAUNCHER_OWNER ./bits/bootstrap/chownif /var/lib/docker
+else
+  debug "  -- No /var/lib/docker found, so not chowning to $LAUNCHER_OWNER"
+fi
+
+DIR=./bits/docker ./bits/bootstrap/cleanup
+
+notify "DONE, Installing DOCKER."

@@ -1,0 +1,204 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+OWNER=${OWNER-$USER}
+COPY_OUTPUT=/tmp/copy.log
+
+IFMISSING=${IFMISSING-false}
+
+# TODO: turn into a list
+KEY1=$1
+VAL1=$2
+
+KEY2=$3
+VAL2=$4
+
+KEY3=$5
+VAL3=$6
+
+KEY4=$7
+VAL4=$8
+
+KEY5=$9
+VAL5=${10}
+
+KEY6=${11}
+VAL6=${12}
+
+KEY7=${13}
+VAL7=${14}
+
+KEY8=${15}
+VAL8=${16}
+
+KEY9=${17}
+VAL9=${18}
+
+KEY10=${19}
+VAL10=${20}
+
+KEY11=${21}
+VAL11=${22}
+
+KEY12=${23}
+VAL12=${24}
+
+KEY13=${25}
+VAL13=${26}
+
+KEY14=${27}
+VAL14=${28}
+
+KEY15=${29}
+VAL15=${30}
+
+KEY16=${31}
+VAL16=${32}
+
+KEY17=${33}
+VAL17=${34}
+
+KEY18=${35}
+VAL18=${36}
+
+if [[ "$IFMISSING" == true ]] ; then
+
+  if [[ ! -e $LOCATION ]]; then
+    notify "  -- $LOCATION created (as it was missing)"
+    OWNER=$OWNER ./bits/bootstrap/cp ${TEMPLATE} ${LOCATION}
+  else
+    debug "  -- $LOCATION already exists, skipping"
+  fi
+
+elif [[ "$KEY1" == "" ]] ||  [[ `file $TEMPLATE | grep text` == "" ]]; then
+
+  if [[ ! -e $LOCATION ]]; then
+    notify "  -- $LOCATION created (new file)"
+    OWNER=$OWNER ./bits/bootstrap/cp ${TEMPLATE} ${LOCATION}
+  elif [[ `diff ${TEMPLATE} ${LOCATION}` == "" ]]; then
+    debug "  -- No diff between $TEMPLATE and $LOCATION, skipping"
+  else
+    notify "  -- Diff between $TEMPLATE and $LOCATION, updating"
+    OWNER=$OWNER ./bits/bootstrap/cp ${TEMPLATE} ${LOCATION}
+  fi
+
+else
+
+  if [[ "$CODE" == "" ]]; then
+    NEWFILE="${TEMPLATE}.copyif"
+
+    cp ${TEMPLATE} ${NEWFILE}
+
+    if [[ -z "$SED_I" ]]; then
+      source ./bits/bootstrap/env
+    fi
+
+    if [[ "$KEY1" != "" ]]; then
+      debug "    >> Applying filter $KEY1 to $VAL1"
+      $SED_I "s|$KEY1|$VAL1|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY2" != "" ]]; then
+      debug "    >> Applying filter $KEY2 to $VAL2"
+      $SED_I "s|$KEY2|$VAL2|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY3" != "" ]]; then
+      debug "    >> Applying filter $KEY3 to $VAL3"
+      $SED_I "s|$KEY3|$VAL3|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY4" != "" ]]; then
+      debug "    >> Applying filter $KEY4 to $VAL4"
+      $SED_I "s|$KEY4|$VAL4|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY5" != "" ]]; then
+      debug "    >> Applying filter $KEY5 to $VAL5"
+      $SED_I "s|$KEY5|$VAL5|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY6" != "" ]]; then
+      debug "    >> Applying filter $KEY6 to $VAL6"
+      $SED_I "s|$KEY6|$VAL6|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY7" != "" ]]; then
+      debug "    >> Applying filter $KEY7 to $VAL7"
+      $SED_I "s|$KEY7|$VAL7|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY8" != "" ]]; then
+      debug "    >> Applying filter $KEY8 to $VAL8"
+      $SED_I "s|$KEY8|$VAL8|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY9" != "" ]]; then
+      debug "    >> Applying filter $KEY9 to $VAL9"
+      $SED_I "s|$KEY9|$VAL9|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY10" != "" ]]; then
+      debug "    >> Applying filter $KEY10 to $VAL10"
+      $SED_I "s|$KEY10|$VAL10|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY11" != "" ]]; then
+      debug "    >> Applying filter $KEY11 to $VAL11"
+      $SED_I "s|$KEY11|$VAL11|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY12" != "" ]]; then
+      debug "    >> Applying filter $KEY12 to $VAL12"
+      $SED_I "s|$KEY12|$VAL12|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY13" != "" ]]; then
+      debug "    >> Applying filter $KEY13 to $VAL13"
+      $SED_I "s|$KEY13|$VAL13|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY14" != "" ]]; then
+      debug "    >> Applying filter $KEY14 to $VAL14"
+      $SED_I "s|$KEY14|$VAL14|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY15" != "" ]]; then
+      debug "    >> Applying filter $KEY15 to $VAL15"
+      $SED_I "s|$KEY15|$VAL15|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY16" != "" ]]; then
+      debug "    >> Applying filter $KEY16 to $VAL16"
+      $SED_I "s|$KEY16|$VAL16|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY17" != "" ]]; then
+      debug "    >> Applying filter $KEY17 to $VAL17"
+      $SED_I "s|$KEY17|$VAL17|g" ${NEWFILE}
+    fi
+
+    if [[ "$KEY18" != "" ]]; then
+      debug "    >> Applying filter $KEY18 to $VAL18"
+      $SED_I "s|$KEY18|$VAL18|g" ${NEWFILE}
+    fi
+
+  else
+    NEWFILE=${LOCATION}.copyif
+    echo "$CODE" > $NEWFILE
+  fi
+
+  if [[ ! -e $LOCATION ]]; then
+    OWNER=$OWNER ./bits/bootstrap/cp ${NEWFILE} ${LOCATION}
+  else
+    DIFF=$(diff $NEWFILE $LOCATION) 2> /dev/null
+
+    if [[ "$DIFF" != "" ]]; then
+      notify "  -- $LOCATION updated"
+      OWNER=$OWNER ./bits/bootstrap/cp ${NEWFILE} ${LOCATION}
+    else
+      debug "  -- $LOCATION unchanged"
+    fi
+  fi
+  rm -f $NEWFILE
+fi
