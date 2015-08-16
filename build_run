@@ -1,0 +1,33 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+CMD=${CMD-}
+NAME=${NAME-}
+VERSION=${VERSION-latest}
+LAUNCHER_DIR=${LAUNCHER_DIR-}
+
+IMAGE_NAME=${IMAGE_NAME-$NAME:$VERSION}
+IMAGE_RUN_NAME=${IMAGE_RUN_NAME-$NAME:$VERSION-pre}
+
+notify "  -- Running $CMD in DOCKER container $NAME ($VERSION)"
+BUILD_OUTPUT=${LAUNCHER_DIR}/docker_build.log
+TS=$(date +"%Y%m%d%H%M%S")
+CID_FILE=${LAUNCHER_DIR}/$NAME-$VERSION-$TS.cid
+
+(cd ${LAUNCHER_DIR} && IGNORE=$(docker run $@ --cidfile $CID_FILE $IMAGE_RUN_NAME $CMD >> $BUILD_OUTPUT 2>&1))
+ERROR="Error running $CMD in DOCKER container $NAME ($VERSION), due to ..." ./bits/bootstrap/failonerrors $? $BUILD_OUTPUT
+[ $? -ne 0 ] && exit 1
+
+CONTAINER=$(cat $CID_FILE)
+
+debug "  -- Commiting resulting container to image $IMAGE_NAME"
+DOCKER_ID=$(docker commit $CONTAINER $IMAGE_NAME)
+[ $? -ne 0 ] && exit 1
+
+IGNORE=$((docker rm -f $CONTAINER && rm $CID_FILE) >> $BUILD_OUTPUT 2>&1)
+ERROR="Error stopping DOCKER container $CONTAINER running $CMD" ./bits/bootstrap/failonerrors $? $BUILD_OUTPUT
+[ $? -ne 0 ] && exit 1
+
+NAME=$NAME VERSION=latest DOCKER_ID=$DOCKER_ID ./bits/docker/tag
+[ $? -ne 0 ] && exit 1
+

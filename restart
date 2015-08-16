@@ -1,0 +1,14 @@
+#!/bin/bash
+printf "%b" "#!/bin/bash
+RUNNING=\`${DIR}/running\`
+if [[ \"\$RUNNING\" == \"\" ]]; then
+  $DIR/start
+else
+  $DIR/stop
+  $DIR/start
+fi
+" > $DIR/restart
+
+chmod 755 $DIR/restart
+OWNER=${OWNER-$USER}
+chown $OWNER $DIR/restart

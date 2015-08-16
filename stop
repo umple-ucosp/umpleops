@@ -1,0 +1,20 @@
+#!/bin/bash
+printf "%b" "#!/bin/bash
+source logging
+CONTAINER_ID=\`${DIR}/running\`
+if [[ \"\$CONTAINER_ID\" == '' ]]; then
+  debug '$NAME container already stopped, nothing to do.'
+else
+  notify 'Stopping $NAME...'
+  docker stop \$CONTAINER_ID > /dev/null 2>&1
+  if [[ \"$HOST\" != \"\" ]]; then
+    sed -i \"s|.*$HOST||g\" /etc/hosts
+  fi
+  rm -f ${DIR}/container.pid
+  notify 'DONE Stopping $NAME.'
+fi
+" > $DIR/stop
+
+chmod 755 $DIR/stop
+OWNER=${OWNER-$USER}
+chown $OWNER $DIR/stop

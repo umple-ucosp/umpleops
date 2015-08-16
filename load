@@ -1,0 +1,44 @@
+#!/bin/bash
+source ./bits/bootstrap/logging
+
+export DOCKER_ASSETS_DIR=${DOCKER_ASSETS_DIR-./assets/dockerimages}
+IMAGE_NAME=${IMAGE_NAME-$NAME:$VERSION}
+LOAD_OUTPUT=${LAUNCHER_DIR}/docker_save.log
+
+if [[ "$FORCE_BUILD" == "skip" ]]; then
+  debug "  -- Skipping load of DOCKER ${NAME} ${VERSION} altogether, change FORCE_BUILD=true to force it to build (or false to look for an image)"
+  exit 0
+
+elif [[ "$DOCKER_ASSETS_SERVER" != "local" ]]; then
+  SERVER=$DOCKER_ASSETS_SERVER DIR=$DOCKER_ASSETS_DIR TO_DIR=/tmp \
+    FILENAME=${NAME}.${VERSION}.tar.gz ./bits/bootstrap/scp
+  [ $? -ne 0 ] && exit 1
+  DOCKER_IMAGE_FILE=/tmp/${NAME}.${VERSION}.tar
+else
+  ./bits/bootstrap/mkdir DOCKER_ASSETS_DIR
+  [ $? -ne 0 ] && exit 1
+  DOCKER_IMAGE_FILE=$DOCKER_ASSETS_DIR/${NAME}.${VERSION}.tar
+fi
+
+if [[ -e $DOCKER_IMAGE_FILE.gz ]]; then
+
+  if [[ -e $DOCKER_IMAGE_FILE ]]; then
+    debug "  -- Unzipped $DOCKER_IMAGE_FILE already exists, delete to force an unzip of $DOCKER_IMAGE_FILE.gz"
+  else
+    gunzip $DOCKER_IMAGE_FILE.gz
+  fi
+fi
+
+notify "  -- Loading $IMAGE_NAME from $DOCKER_IMAGE_FILE"
+SCRIPT_OUTPUT=$(docker load -i $DOCKER_IMAGE_FILE > $LOAD_OUTPUT 2>&1)
+ERROR="Unable to load $IMAGE_NAME from $DOCKER_IMAGE_FILE due to ..." ./bits/bootstrap/failonerrors $? $LOAD_OUTPUT
+[ $? -ne 0 ] && exit 1
+
+if [[ -e $DOCKER_IMAGE_FILE.gz ]]; then
+  debug "  -- $DOCKER_IMAGE_FILE already exists, deleting unzipped version"
+else
+  debug "  -- Zipping back up $DOCKER_IMAGE_FILE"
+  gzip $DOCKER_IMAGE_FILE
+fi
+rm -f $DOCKER_IMAGE_FILE
+debug "  -- DONE, Loading $IMAGE_NAME to $DOCKER_IMAGE_FILE"

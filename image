@@ -1,0 +1,13 @@
+#!/bin/bash
+if [[ -e ./bits/bootstrap/logging ]]; then
+  source ./bits/bootstrap/logging
+else
+  source logging
+fi
+
+VERSION=${VERSION-latest}
+debug "  -- Looking up image $NAME $VERSION"
+POSSIBLE_ID=$(docker images $NAME | grep $VERSION)
+if [[ "$POSSIBLE_ID" != "" ]]; then
+  echo $POSSIBLE_ID | awk '{ print $3 }'
+fi

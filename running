@@ -1,0 +1,17 @@
+#!/bin/bash
+printf "%b" "#!/bin/bash
+PID_NAME=\${PID_NAME-container.pid}
+CONTAINER_ID=\`cat ${DIR}/\${PID_NAME} 2> /dev/null\`
+if [[ \"\$CONTAINER_ID\" == \"\" ]]; then
+  echo \"\"
+elif [[ \"\`docker ps --no-trunc | grep \$CONTAINER_ID\`\" == \"\"  ]]; then
+  rm -f ${DIR}/container.pid
+  echo \"\"
+else
+  echo \$CONTAINER_ID
+fi
+" > $DIR/running
+
+chmod 755 $DIR/running
+OWNER=${OWNER-$USER}
+chown $OWNER $DIR/running

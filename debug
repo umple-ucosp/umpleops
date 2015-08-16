@@ -1,0 +1,30 @@
+#!/bin/bash
+DOCKER_CODE=`resolvevars ${DOCKER}`
+SCRIPT_NAME=${SCRIPT_NAME-debug}
+SCRIPT_LAUNCHER=${SCRIPT_LAUNCHER-/bin/bash}
+
+if [[ "$NAME" == "$IMAGE_NAME" ]]; then
+  FRIENDLY_NAME=$NAME
+else
+  FRIENDLY_NAME="${NAME} (${IMAGE_NAME})"
+fi
+
+printf "%b" "#!/bin/bash
+source logging
+CONTAINER_NAME=\${1}
+if [[ \"\$CONTAINER_NAME\" == \"\" ]]; then
+  notify \"Starting $SCRIPT_NAME mode for ${FRIENDLY_NAME}, randomly named\"
+  CONTAINER_NAME_CMD=\"\"
+else
+  notify \"Starting $SCRIPT_NAME mode for ${FRIENDLY_NAME} (\$CONTAINER_NAME)\"
+  CONTAINER_NAME_CMD=\"--name \$CONTAINER_NAME\"
+  docker rm -v \$CONTAINER_NAME > /dev/null 2>&1
+fi
+${DOCKER_CODE} \\
+  \$CONTAINER_NAME_CMD ${IMAGE_NAME} $SCRIPT_LAUNCHER
+
+" > $DIR/$SCRIPT_NAME
+
+chmod 755 $DIR/$SCRIPT_NAME
+OWNER=${OWNER-$USER}
+chown $OWNER $DIR/$SCRIPT_NAME

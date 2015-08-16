@@ -1,0 +1,31 @@
+#!/bin/bash
+printf "%b" "#!/bin/bash
+source logging
+
+if [[ -e ${DIR}/running ]]; then
+  ID=\${ID-\`${DIR}/running\`}
+else
+  ID=\${ID-}
+fi
+
+if [[ \"\$ID\" == '' ]]; then
+  debug \"Container not officially running, going to try and grep it out\"
+  ID=$(docker ps | grep $IMAGE_NAME | awk '{ print $1 }')
+  if [[ \"\$ID\" == '' ]]; then
+    echo ''
+    exit 0
+  fi
+fi
+
+if [[ \"\`which boot2docker 2> /dev/null\`\" == \"\" ]]; then
+  IP=\$(docker inspect \$ID | python -c 'import json,sys;obj=json.load(sys.stdin);print obj[0][\"NetworkSettings\"][\"IPAddress\"]')
+else
+  IP=\$(boot2docker ip)
+fi
+
+echo \"\$IP\"
+" > $DIR/ip
+
+chmod 755 $DIR/ip
+OWNER=${OWNER-$USER}
+chown $OWNER $DIR/ip
