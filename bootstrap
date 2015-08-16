@@ -1,0 +1,6 @@
+#!/bin/bash
+mkdir -p ./nodes
+cp ./bits/git/files/git_node ./nodes/git
+chmod 755 ./nodes/git
+
+capbash install deploykeys

@@ -1,0 +1,6 @@
+#!/bin/bash
+./bits/deploykeys/install
+
+GIT_REPO_NAME=samplephp \
+  GIT_URL=https://github.com/capbash/samplephp \
+  ./bits/git/install

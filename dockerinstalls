@@ -1,0 +1,50 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+#-----------
+# Configurations
+#-----------
+
+GIT_APPS_DIR=${GIT_APPS_DIR-/var/local/apps}
+GIT_BASE_URL=${GIT_BASE_URL-git@bitbucket.org:cenx-cf}
+GIT_BRANCH=${GIT_BRANCH-integration}
+GIT_RESET_CHECKSUM=${GIT_RESET_CHECKSUM-true}
+GIT_CHECK_CHECKSUM=${GIT_CHECK_CHECKSUM-true}
+
+#-----------
+# Install Script
+#-----------
+
+debug "  -- Cloning projects to $GIT_APPS_DIR"
+
+if [[ "$GIT_RESET_CHECKSUM" == "true" ]]; then
+  debug "Resetting git checkout ${LAUNCHER_DIR}/src/src_new.gitcommits"
+  rm -rf ${LAUNCHER_DIR}/src/src_new
+  mkdir -p ${LAUNCHER_DIR}/src/src_new
+  touch ${LAUNCHER_DIR}/src/src_new.gitcommits
+fi
+
+ERROR=false
+for REPO_NAME in $@
+do
+  if [[ "$ERROR" == "false" ]]; then
+    GIT_APPS_DIR=$GIT_APPS_DIR GIT_REPO_NAME=$REPO_NAME GIT_URL=$GIT_BASE_URL/$REPO_NAME.git GIT_BRANCH=$GIT_BRANCH \
+      LAUNCHER_DIR=$LAUNCHER_DIR ./bits/git/dockerinstall
+    [ $? -ne 0 ] && ERROR=true
+  fi
+done
+[ "$ERROR" == "true" ] && exit 1
+
+if [[ "$GIT_CHECK_CHECKSUM" == "true" ]]; then
+  if [[ "$GIT_MODE" == "handsoff" ]] && [[ -e "${LAUNCHER_DIR}/src/src.tar.gz" ]]; then
+    debug "  -- Skipping the checksum check (${LAUNCHER_DIR}/src/src_new.gitcommits)"
+  elif [[ `cat ${LAUNCHER_DIR}/src/src_new.gitcommits 2> /dev/null` != `cat ${LAUNCHER_DIR}/src/src.gitcommits 2> /dev/null` ]] ; then
+    notify "  -- Source projects changed, creating a new ${LAUNCHER_DIR}/src/src.tar.gz"
+    (cd ${LAUNCHER_DIR}/src && rm -rf src && mv src_new src && tar zcf src.tar.gz src/ && rm -rf src)
+  else
+    debug "  -- No change to source projects (keeping ${LAUNCHER_DIR}/src/src.tar.gz as-is)"
+    rm -rf ${LAUNCHER_DIR}/src/src_new
+  fi
+  mv ${LAUNCHER_DIR}/src/src_new.gitcommits ${LAUNCHER_DIR}/src/src.gitcommits
+fi
+

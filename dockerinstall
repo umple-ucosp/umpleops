@@ -1,0 +1,13 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+GIT_URL=$GIT_URL GIT_REPO_NAME=$GIT_REPO_NAME GIT_URL=$GIT_URL GIT_BRANCH=$GIT_BRANCH ./bits/git/install
+[ $? -ne 0 ] && exit 1
+
+if [[ "$GIT_MODE" == "handsoff" ]] && [[ -e "${LAUNCHER_DIR}/src.tar.gz" ]]; then
+  debug "  -- Ignoring the syncing of src for docker"
+else
+  (cd ${GIT_APPS_DIR}/$GIT_REPO_NAME && git log -n 1 $GIT_BRANCH --pretty=format:"%H" >> ${LAUNCHER_DIR}/src/src_new.gitcommits)
+  debug "  -- Syncing $GIT_REPO_NAME to ${LAUNCHER_DIR}/src/src_new for docker"
+  rsync -qavzh ${GIT_APPS_DIR}/$GIT_REPO_NAME ${LAUNCHER_DIR}/src/src_new/ --exclude ".svn" --exclude ".git"
+fi

@@ -1,0 +1,149 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+# set -euo pipefail ; IFS=$'\n\t'
+
+#-----------
+# Configurations
+#-----------
+
+export LOG_DIR=${LOG_DIR-/var/log}
+export GIT_LOG_DIR=${GIT_LOG_DIR-$LOG_DIR/git}
+export GIT_APPS_DIR=${GIT_APPS_DIR-/var/local/apps}
+GIT_REPO_NAME=${GIT_REPO_NAME-samplephp}
+GIT_URL=${GIT_URL-https://github.com/capbash/samplephp}
+GIT_REMOTE=${GIT_REMOTE-origin}
+GIT_CHECKOUT_MODE=`if [ -z "$GIT_TAG" ]; then echo "branch"; else echo "tag"; fi`
+GIT_BRANCH=${GIT_BRANCH-master}
+GIT_TAG=${GIT_TAG-$GIT_BRANCH}
+GIT_OWNER=${GIT_OWNER-$USER}
+GIT_MODE=${GIT_MODE-remote}
+
+GIT_EMAIL=${GIT_EMAIL-server@localhost}
+GIT_NAME=${GIT_NAME-server}
+
+GIT_REPO_DIR=${GIT_APPS_DIR}/${GIT_REPO_NAME}
+
+LOGLEVEL=${LOGLEVEL-1}
+
+#-----------
+# Install Script
+#-----------
+
+OWNER=$GIT_OWNER ./bits/bootstrap/mkdir GIT_LOG_DIR
+OWNER=$GIT_OWNER ./bits/bootstrap/touch ${GIT_LOG_DIR}/${GIT_REPO_NAME}.log
+GIT_OUTPUT=${GIT_LOG_DIR}/${GIT_REPO_NAME}.log
+echo > $GIT_OUTPUT
+
+if [[ "`which git 2> /dev/null`" == "" ]]; then
+  notify "  -- Installing git"
+  if [[ "$OS" == "redhat" ]] || [[ "$OS" == "centos" ]]; then
+    debug "  -- Running 'yum install -y git-core'"
+    yum install -y git-core
+  else
+    debug "  -- Running 'apt-get install -y git-core'"
+    apt-get install -y git-core
+  fi
+else
+  debug "  -- Git already installed"
+fi
+
+if [[ "`git config --global user.email`" == "" ]]; then
+  git config --global user.email "$GIT_EMAIL"
+  git config --global user.name "$GIT_NAME"
+  debug "  -- git config --global user.email \"$GIT_EMAIL\""
+  debug "  -- git config --global user.name \"$GIT_NAME\""
+fi
+
+if [[ ! -e $GIT_APPS_DIR ]]; then
+  OWNER=$GIT_OWNER ./bits/bootstrap/mkdir GIT_APPS_DIR
+fi
+
+# NEW repository, so clone it
+if [[ ! -e ${GIT_REPO_DIR} ]]; then
+  notify "  -- Creating a new REPO ${GIT_REPO_DIR} (${GIT_BRANCH})..."
+  # TODO: Andrew was able to get bash to only run 'su' if the user was difference
+  if [[ "$GIT_OWNER" == "$USER" ]]; then
+    (cd ${GIT_APPS_DIR} && GIT_ERRORS=$(git clone ${GIT_URL} ${GIT_REPO_NAME} > ${GIT_OUTPUT} 2>&1))
+
+    ERROR="Unable to clone $GIT_REPO_NAME from $GIT_URL due to ..." ./bits/bootstrap/failonerrors $? $GIT_OUTPUT
+    [ $? -ne 0 ] && exit 1
+
+    (cd ${GIT_APPS_DIR}/${GIT_REPO_NAME} && git checkout ${GIT_TAG} > ${GIT_OUTPUT} 2>&1)
+    ERROR="Unable to checkout $GIT_TAG from $GIT_REPO_NAME due to ..." ./bits/bootstrap/failonerrors $? $GIT_OUTPUT
+    [ $? -ne 0 ] && exit 1
+  else
+    su $GIT_OWNER -c "(cd ${GIT_APPS_DIR} && git clone ${GIT_URL} ${GIT_REPO_NAME} > ${GIT_OUTPUT} 2>&1)"
+    ERROR="Unable to clone $GIT_REPO_NAME (as $GIT_OWNER) from $GIT_URL due to ..." ./bits/bootstrap/failonerrors $? $GIT_OUTPUT
+    [ $? -ne 0 ] && exit 1
+
+    su $GIT_OWNER -c "(cd ${GIT_APPS_DIR}/${GIT_REPO_NAME} && git checkout ${GIT_TAG} > ${GIT_OUTPUT} 2>&1)"
+    ERROR="Unable to checkout $GIT_TAG from $GIT_REPO_NAME due to ..." ./bits/bootstrap/failonerrors $? $GIT_OUTPUT
+    [ $? -ne 0 ] && exit 1
+  fi
+  debug "  -- DONE, Creating a new REPO ${GIT_REPO_DIR} (${GIT_BRANCH})"
+
+# HANDSOFF won't touch your code
+elif [[ "$GIT_MODE" = handsoff ]]; then
+  notify "  -- Repo ${GIT_REPO_DIR} already exists, but not touching (ideally on ${GIT_BRANCH})"
+
+# FORCE an update, this will force Docker to skip the cache (not necessarily a good thing)
+elif [[ "$GIT_MODE" = "force" ]]; then
+
+  if [[ "$GIT_CHECKOUT_MODE" = "tag" ]]; then
+    notify "  -- Forcing a checkout to ${GIT_REPO_DIR} (${GIT_BRANCH}, tag $GIT_TAG)"
+
+    if [[ "$GIT_OWNER" == "$USER" ]]; then
+      (cd ${GIT_REPO_DIR} && \
+       git reset --hard HEAD > ${GIT_OUTPUT} 2>&1 && \
+       git fetch 2> /dev/null >> ${GIT_OUTPUT} 2>&1 && \
+       git checkout $GIT_BRANCH >> ${GIT_OUTPUT} 2>&1 && \
+       git merge origin $GIT_BRANCH 2> /dev/null >> ${GIT_OUTPUT} 2>&1 && \
+       git checkout tags/$GIT_TAG >> ${GIT_OUTPUT} 2>&1)
+    else
+      su $GIT_OWNER -c "(cd ${GIT_REPO_DIR} && \\
+                            git reset --hard HEAD > ${GIT_OUTPUT} 2>&1 && \\
+                            git fetch 2> /dev/null >> ${GIT_OUTPUT} 2>&1 && \\
+                            git checkout $GIT_BRANCH >> ${GIT_OUTPUT} 2>&1 && \\
+                            git merge origin $GIT_BRANCH 2> /dev/null >> ${GIT_OUTPUT} 2>&1 && \\
+                            git checkout tags/$GIT_TAG >> ${GIT_OUTPUT} 2>&1)"
+    fi
+    debug_all ${GIT_OUTPUT}
+  else
+    notify "  -- Forcing a reset to ${GIT_REPO_DIR} (${GIT_BRANCH})"
+    su $GIT_OWNER -c "(cd ${GIT_REPO_DIR} && git fetch && git checkout ${GIT_BRANCH} 2> /dev/null > ${GIT_OUTPUT} && git fetch >> ${GIT_OUTPUT} && git reset --hard ${GIT_REMOTE}/${GIT_BRANCH} >> ${GIT_OUTPUT} && git checkout ${GIT_TAG} 2> /dev/null >> ${GIT_OUTPUT})"
+    debug_all ${GIT_OUTPUT}
+  fi
+
+
+# BEST EFFORT to update to the latest of the branch
+elif [[ "$GIT_TAG" == "$GIT_BRANCH" ]]; then
+
+  if [[ "$GIT_MODE" == "local" ]]; then
+    notify "  -- Checking out ${GIT_REPO_DIR} (${GIT_BRANCH})"
+    if [[ "$GIT_OWNER" == "$USER" ]]; then
+      (cd ${GIT_REPO_DIR} && git checkout ${GIT_BRANCH} 2> /dev/null > ${GIT_OUTPUT} && git pull ${GIT_REMOTE} ${GIT_BRANCH} 2> /dev/null >> ${GIT_OUTPUT})
+      debug_all ${GIT_OUTPUT}
+    else
+      su $GIT_OWNER -c "(cd ${GIT_REPO_DIR} && git checkout . > ${GIT_OUTPUT} && git checkout ${GIT_BRANCH} 2> /dev/null >> ${GIT_OUTPUT} && git pull ${GIT_REMOTE} ${GIT_BRANCH} 2> /dev/null >> ${GIT_OUTPUT})"
+      debug_all ${GIT_OUTPUT}
+    fi
+  else
+    notify "  -- Force checkout ${GIT_REPO_DIR} (${GIT_BRANCH})"
+    if [[ "$GIT_OWNER" == "$USER" ]]; then
+      (cd ${GIT_REPO_DIR} && git checkout . > ${GIT_OUTPUT} && git checkout ${GIT_BRANCH} 2> /dev/null >> ${GIT_OUTPUT} && git pull ${GIT_REMOTE} ${GIT_BRANCH} 2> /dev/null >> ${GIT_OUTPUT})
+      debug_all ${GIT_OUTPUT}
+    else
+      su $GIT_OWNER -c "(cd ${GIT_REPO_DIR} && git checkout . > ${GIT_OUTPUT} && git checkout ${GIT_BRANCH} 2> /dev/null >> ${GIT_OUTPUT} && git pull ${GIT_REMOTE} ${GIT_BRANCH} 2> /dev/null >> ${GIT_OUTPUT})"
+      debug_all ${GIT_OUTPUT}
+    fi
+  fi
+
+# ALEADY ON TAG, NOTHING TO DO
+elif [[ "`cd ${GIT_REPO_DIR} && git name-rev --tags --name-only $(git rev-parse HEAD)`" == "$GIT_TAG" ]]; then
+  debug "  -- Already on ${GIT_REPO_DIR} (${GIT_TAG})"
+
+else
+  notify "  -- Updating ${GIT_REPO_DIR} (${GIT_TAG})"
+  su $GIT_OWNER -c "(cd ${GIT_REPO_DIR} && git checkout . > ${GIT_OUTPUT} && git fetch >> ${GIT_OUTPUT} && git checkout ${GIT_TAG} >> ${GIT_OUTPUT})"
+  debug_all ${GIT_OUTPUT}
+fi
