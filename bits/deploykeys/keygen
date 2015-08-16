@@ -1,0 +1,40 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+#-----------
+# Configurations
+#-----------
+
+OWNER=${OWNER-$USER}
+SSH_TYPE=${SSH_TYPE-dsa}
+TARGET_DIR=${TARGET_DIR-$HOME/.ssh}
+
+#-----------
+# Install Script
+#-----------
+
+SOURCE_PRIVATE_KEY=./assets/keys/$OWNER/id_${SSH_TYPE}
+SOURCE_PUBLIC_KEY=./assets/keys/$OWNER/id_${SSH_TYPE}.pub
+TARGET_PRIVATE_KEY=$TARGET_DIR/id_${SSH_TYPE}
+TARGET_PUBLIC_KEY=$TARGET_DIR/id_${SSH_TYPE}.pub
+
+KEYGEN_OUTPUT=/tmp/keygen.log
+
+if [[ -e $TARGET_PUBLIC_KEY ]]; then
+  debug "  -- SSH keys already setup in $TARGET_PUBLIC_KEY"
+
+elif [[ -e $SOURCE_PUBLIC_KEY ]] && [[ -e $SOURCE_PRIVATE_KEY ]]; then
+  notify "  -- Using keys from $SOURCE_PUBLIC_KEY ($OWNER)"
+  OWNER=$OWNER ./bits/bootstrap/mkdir $TARGET_DIR
+  OWNER=$OWNER ./bits/bootstrap/cp $SOURCE_PRIVATE_KEY $TARGET_PRIVATE_KEY
+  OWNER=$OWNER ./bits/bootstrap/cp $SOURCE_PUBLIC_KEY $TARGET_PUBLIC_KEY
+  chmod 600 $TARGET_PRIVATE_KEY
+  chmod 644 $TARGET_PUBLIC_KEY
+
+else
+  notify "  -- Creating ssh keys $TARGET_PUBLIC_KEY"
+  mkdir -p ${HOME}/.ssh
+  SCRIPT_OUTPUT=$(ssh-keygen -t $SSH_TYPE -N "" -f $TARGET_PRIVATE_KEY > $KEYGEN_OUTPUT 2>&1)
+  ERROR="Unable create ssh keys for $OWNER ..." ./bits/bootstrap/failonerrors $? $KEYGEN_OUTPUT
+  [ $? -ne 0 ] && exit 1
+fi

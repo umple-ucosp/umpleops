@@ -1,0 +1,35 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+set -euo pipefail ; IFS=$'\n\t'
+
+#-----------
+# Configurations
+#-----------
+
+LAUNCHER_OWNER=${DEPLOYKEYS_NAME-root}
+DEPLOYKEYS_HOSTNAME=${DEPLOYKEYS_URL-github}
+DEPLOYKEYS_HOSTURL=${DEPLOYKEYS_URL-github.com}
+
+#-----------
+# Configurations
+#-----------
+
+if [[ "`which getent 2> /dev/null`" != "" ]]; then
+  debug "  -- Using getent to find home directory of $LAUNCHER_OWNER"
+  USER_HOME="$(getent passwd $LAUNCHER_OWNER | awk -F ':' '{print $6}')"
+elif [[ "$LAUNCHER_OWNER" == root  ]]; then
+  debug "  -- Assuming /root home directory for $LAUNCHER_OWNER"
+  USER_HOME=/root
+elif [[ -e "/home/$LAUNCHER_OWNER" ]]; then
+  debug "  -- Assuming /home/$LAUNCHER_OWNER home directory for $LAUNCHER_OWNER"
+  USER_HOME=/home/$LAUNCHER_OWNER
+elif [[ "$LAUNCHER_OWNER" == "$USER" ]]; then
+  debug "  -- Using \$HOME as the home directory current user $USER"
+  USER_HOME=$HOME
+else
+  error "Unable to determine the home directory of $LAUNCHER_OWNER"
+  exit 1
+fi
+
+debug "  -- Adding $DEPLOYKEYS_HOSTNAME to ${USER_HOME}/.ssh/known_hosts"
+ssh-keyscan -H $DEPLOYKEYS_HOSTURL 2> /dev/null >> ${USER_HOME}/.ssh/known_hosts

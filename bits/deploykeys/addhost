@@ -1,0 +1,11 @@
+#!/bin/bash
+HOST=$HOST
+IP=$IP
+
+if [[ "`cat /etc/hosts | grep $HOST`" == '' ]]; then
+  echo "  -- Adding $HOST ($IP) to /etc/hosts"
+  echo "$IP $HOST" >> /etc/hosts
+else
+  echo "  -- Updating $HOST ($IP) in /etc/hosts"
+  sed -i "s|.*$HOST|$IP $HOST|g" /etc/hosts
+fi

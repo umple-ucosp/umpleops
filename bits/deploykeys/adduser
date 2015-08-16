@@ -1,0 +1,59 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+set -euo pipefail ; IFS=$'\n\t'
+
+#-----------
+# Configurations
+#-----------
+
+LAUNCHER_OWNER=${LAUNCHER_OWNER-deployer}
+GROUP=${GROUP-www-data}
+SSHKEYS=${SSHKEYS=false}
+PASSWD=${PASSWD-asdf1234}
+
+#-----------
+# Install Script
+#-----------
+
+ADDUSER_OUTPUT=/tmp/adduser.log
+
+if [[ "`id -u $LAUNCHER_OWNER 2>/dev/null`" == "" ]]; then
+  notify "  -- Creating $LAUNCHER_OWNER user"
+  if [[ "$OS" == "ubuntu" ]]; then
+    SCRIPT_OUTPUT=$(adduser --disabled-password --gecos "" $LAUNCHER_OWNER > $ADDUSER_OUTPUT 2>&1)
+    ERROR="Unable add user $LAUNCHER_OWNER due to ..." ./bits/bootstrap/failonerrors $? $ADDUSER_OUTPUT
+    [ $? -ne 0 ] && exit 1
+  else
+    SCRIPT_OUTPUT=$(useradd $LAUNCHER_OWNER > $ADDUSER_OUTPUT 2>&1)
+    ERROR="Unable add user $LAUNCHER_OWNER due to ..." ./bits/bootstrap/failonerrors $? $ADDUSER_OUTPUT
+    [ $? -ne 0 ] && exit 1
+  fi
+
+  if [[ "$PASSWD" == "disabled" ]] || [[ "$PASSWD" == "" ]]; then
+    debug "  -- No password set"
+  else
+    notify "  -- Creating password"
+
+    SCRIPT_OUTPUT=$(./bits/deploykeys/passwd $LAUNCHER_OWNER $PASSWD > $ADDUSER_OUTPUT 2>&1)
+    ERROR="Unable set password due to ..." ./bits/bootstrap/failonerrors $? $ADDUSER_OUTPUT
+    [ $? -ne 0 ] && exit 1
+  fi
+else
+  debug "  -- $LAUNCHER_OWNER user already exists"
+fi
+
+if [[ "$SSHKEYS" == true ]]; then
+  OWNER=$LAUNCHER_OWNER TARGET_DIR=/home/$LAUNCHER_OWNER/.ssh ./bits/deploykeys/keygen
+elif [[ "$SSHKEYS" != false ]]; then
+  if [[ ! -e /home/$SSHKEYS/.ssh ]]; then
+    warn "  -- WARNING, unable to copy keys from $SSHKEYS to $LAUNCHER_OWNER"
+  elif [[ ! -e /home/$LAUNCHER_OWNER/.ssh ]]; then
+    notify "  -- Copying SSH access from $SSHKEYS to $LAUNCHER_OWNER"
+    cp -R /home/$SSHKEYS/.ssh /home/$LAUNCHER_OWNER/.ssh
+    chown -R $LAUNCHER_OWNER:$GROUP /home/$LAUNCHER_OWNER/.ssh
+  else
+    debug "  -- Keys already setup for $LAUNCHER_OWNER"
+  fi
+fi
+
+
