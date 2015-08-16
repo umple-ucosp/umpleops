@@ -1,0 +1,16 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+CHOWN_OUTPUT=/tmp/chown.log
+OWNER=${OWNER-$USER}
+FORCE=${FORCE-false}
+DIR_OR_FILE=$1
+
+if [[ "$USER" != "$OWNER" ]] || [[ "$FORCE" == "true" ]]; then
+  SCRIPT_OUTPUT=$(chown -R $OWNER $DIR_OR_FILE > $CHOWN_OUTPUT 2>&1)
+  ERROR="Unable to chown to $OWNER $DIR_OR_FILE due to ..." ./bits/bootstrap/failonerrors $? $CHOWN_OUTPUT
+  [ $? -ne 0 ] && exit 1
+  debug "  -- Set ownership (was forced? $FORCE) to $OWNER ($DIR_OR_FILE)"
+else
+  debug "  -- Already running as $USER, so use FORCE=true if you must force the ownership change"
+fi

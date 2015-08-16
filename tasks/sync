@@ -1,0 +1,26 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+MODE=${1}
+TARGET=${2} # the ip of the server
+OWNER=${3-root}
+GROUP=${4-$OWNER}
+REMOTE_DIR=${REMOTE_DIR-/var/capbash} # where to save on the remote server
+SSH_LOGLEVEL=${SSH_LOGLEVEL-1}
+
+if [ -z "$MODE" ] || [ "$MODE" != "push" -a "$MODE" != "pull" ]; then
+  echo "USAGE: capbash sync <push/pull> <Target IP/host> <user>"
+  echo "   eg: capbash sync push my-server.localnet"
+  exit 0
+fi
+
+AUTHORIZED_KEYS_FILENAME=./assets/${OWNER}_authorized_keys
+if [ -f $AUTHORIZED_KEYS_FILENAME ]; then
+  debug "Uploading Authorized Keys ($OWNER) For Bootstrap..."
+  ssh $OWNER@$TARGET 'mkdir -p ~/.ssh' > /dev/null
+  scp $AUTHORIZED_KEYS_FILENAME $OWNER@$TARGET:~/.ssh/authorized_keys > /dev/null
+else
+  debug "Skipping authorized keys, edit $AUTHORIZED_KEYS_FILENAME if you want to override $TARGET"
+fi
+
+(cd ./bits/bootstrap && bundle exec cap capbash:$MODE TARGET=$TARGET NODE=default OWNER=$OWNER GROUP=$GROUP REMOTE_DIR=$REMOTE_DIR)

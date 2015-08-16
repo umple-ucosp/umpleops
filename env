@@ -1,0 +1,60 @@
+#!/bin/bash
+
+if [[ -e ./bits/bootstrap/logging ]]; then
+  source ./bits/bootstrap/logging
+else
+  source logging
+fi
+
+if [[ `uname` == "Darwin" ]]; then
+  export OS=mac
+  export SED_I="sed -i .deleteme"
+elif [[ "`lsb_release -d | grep Ubuntu`" != "" ]]; then
+  export OS=ubuntu
+  export SED_I="sed -i"
+elif [[ "`lsb_release -d | grep Mint`" != "" ]]; then
+  export OS=ubuntu
+  export SED_I="sed -i"
+elif [[ "`lsb_release -d | grep \"Red Hat\"`" != "" ]]; then
+  export OS=redhat
+  export SED_I="sed -i"
+elif [[ "`lsb_release -d | grep \"CentOS\"`" != "" ]]; then
+  export OS=centos
+  export SED_I="sed -i"
+else
+  export OS=unknown
+  export SED_I="sed -i"
+fi
+
+if [[ "$USER" == root ]]; then
+  debug "Clearing SUDO environment variable. (running as root already)"
+  export SUDO=""
+else
+  debug "Setting SUDO environment variable. (running as $USER)"
+  export SUDO=sudo
+fi
+
+
+debug "Exporting \$OS=$OS"
+ENV=${ENV-ignore}
+
+if [[ -e "./assets/env/default" ]]; then
+  debug "Including default variables in ./assets/env/default"
+  . ./assets/env/default
+fi
+
+if [[ -e "./assets/env/$OS" ]]; then
+  debug "Including OS variables in ./assets/env/$OS"
+  . ./assets/env/$OS
+fi
+
+if [[ -e "./assets/env/`hostname`" ]]; then
+  debug "Including HOST variables in ./assets/env/`hostname`"
+  . ./assets/env/`hostname`
+fi
+
+
+if [[ "$ENV" != "ignore" ]] && [[ -e "./assets/env/$ENV" ]]; then
+  debug "Including ENV variables in ./assets/env/$ENV"
+  . ./assets/env/$ENV
+fi

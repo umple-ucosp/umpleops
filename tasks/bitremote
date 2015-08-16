@@ -1,0 +1,28 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+BIT=$1
+
+if [[ "$BIT" == "--all" ]]; then
+  # todo, use capbash ls to automate this
+  capbash bitremote apache
+  capbash bitremote cron
+  capbash bitremote deploykeys
+  capbash bitremote docker
+  capbash bitremote drupal
+  capbash bitremote elixir
+  capbash bitremote git
+  capbash bitremote monit
+  capbash bitremote mysql
+  capbash bitremote nginx
+  capbash bitremote phoenix
+  capbash bitremote rails
+  capbash bitremote tarball
+else
+  GIT_OUTPUT=/tmp/install_${BIT}.log
+  GIT_URL=https://github.com/capbash/capbash-$BIT
+  debug "Adding $BIT as a remote to $GIT_URL..."
+  GIT_ERRORS=$(git remote add -f $BIT $GIT_URL > ${GIT_OUTPUT} 2>&1)
+fi
+
+

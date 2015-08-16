@@ -1,0 +1,32 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+SCP_OUTPUT=/tmp/scp_output.log
+PEM_FILENAME=./assets/ssh/$SERVER.pem
+DOWNLOAD_FILENAME=$TO_DIR/$FILENAME
+
+
+if [[ -e "$PEM_FILENAME.readme" ]] && [[ ! -e "$PEM_FILENAME.pem" ]]; then
+  error "MISSING $PEM_FILENAME, unable to access $SERVER"
+  exit 1
+fi
+
+notify "  -- Downloading $FILENAME from $DIR/$FILENAME to $DOWNLOAD_FILENAME"
+
+if [[ -e "$DOWNLOAD_FILENAME" ]]; then
+  debug "  -- Already downloaded $DOWNLOAD_FILENAME, delete to force a new download"
+else
+  if [[ -e "$PEM_FILENAME" ]]; then
+    debug "  -- Loading private key from ./assets/ssh/$SERVER.pem"
+    SCRIPT_OUTPUT=$(scp -i $PEM_FILENAME $SERVER:$DIR/$FILENAME $TO_DIR > $SCP_OUTPUT 2>&1)
+  else
+    debug "  -- Running scp without private pem (if needed, please add it to $PEM_FILENAME)"
+    SCRIPT_OUTPUT=$(scp $SERVER:$DIR/$FILENAME $TO_DIR > $SCP_OUTPUT 2>&1)
+  fi
+
+  if [[ ! -e "$DOWNLOAD_FILENAME" ]]; then
+    error "Unable to copy $FILENAME from $SERVER:$DIR/$FILENAME"
+    exit 1
+  fi
+
+fi

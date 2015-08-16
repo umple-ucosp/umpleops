@@ -1,0 +1,4 @@
+#!/bin/bash
+ACTION=${1-ls}
+shift
+./bits/bootstrap/tasks/$ACTION $@

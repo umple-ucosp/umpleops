@@ -1,0 +1,17 @@
+#!/bin/bash
+[[ -e ./bits/bootstrap/logging ]] && [[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+[[ -z "$INFO_LEVEL" ]] && source logging
+
+if [ $1 -ne 0 ] ; then
+  error "$ERROR"
+  if [ ! -z $2 ] ; then
+    error_all $2
+  fi
+  exit 1
+elif [ ! -z $2 ] && [[ `cat $2 | grep "HTTP/1.1 500 Internal Server Error"` != "" ]] ; then
+  error "$ERROR"
+  error_all $2
+  exit 1
+else
+  debug_all $2
+fi

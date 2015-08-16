@@ -1,0 +1,6 @@
+#!/bin/bash
+git submodule update
+
+mkdir -p ./nodes
+cp ./bits/bootstrap/files/helloworld_node ./nodes/helloworld
+chmod 755 ./nodes/helloworld

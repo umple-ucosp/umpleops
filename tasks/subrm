@@ -1,0 +1,28 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+SUBMODULE=$1
+ARGS=${2-""}
+
+if [[ "$SUBMODULE" == "--all" ]]; then
+  # todo, use capbash ls to automate this
+  capbash subrm apache
+  capbash subrm cron
+  capbash subrm deploykeys
+  capbash subrm docker
+  capbash subrm drupal
+  capbash subrm elixir
+  capbash subrm git
+  capbash subrm monit
+  capbash subrm mysql
+  capbash subrm nginx
+  capbash subrm phoenix
+  capbash subrm rails
+  capbash subrm tarball
+elif [[ ! -e "submodules/$SUBMODULE" ]]; then
+  debug "Skipping uninstalled project $SUBMODULE"
+else
+  git submodule deinit submodules/$SUBMODULE
+  git rm submodules/$SUBMODULE
+  rm -rf .git/modules/submodules/$SUBMODULE
+fi

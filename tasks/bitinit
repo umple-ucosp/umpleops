@@ -1,0 +1,30 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+
+BIT=${1-""}
+ARGS=${2-""}
+
+if [[ "$BIT" == "" ]]; then
+  notify "Initializing all bits..."
+  # todo, use capbash ls to automate this
+  capbash bitinit bootstrap
+  capbash bitinit apache
+  capbash bitinit cron
+  capbash bitinit deploykeys
+  capbash bitinit docker
+  capbash bitinit drupal
+  capbash bitinit elixir
+  capbash bitinit git
+  capbash bitinit monit
+  capbash bitinit mysql
+  capbash bitinit nginx
+  capbash bitinit phoenix
+  capbash bitinit rails
+  capbash bitinit tarball
+  notify "DONE, Initializing all bits."
+elif [[ ! -e "bits/$BIT" ]]; then
+  debug "  -- Skipping uninstalled project $BIT"
+else
+  capbash bitremote $BIT
+  [ $? -ne 0 ] && exit 1
+fi

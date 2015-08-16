@@ -1,0 +1,17 @@
+#!/bin/bash
+if [[ `uname` == "Darwin" ]]; then
+  FILENAME=`mktemp /tmp/capbash_tmp.XXXXXX`
+elif [[ "`which tempfile 2> /dev/null`" != "" ]]; then
+  FILENAME=`tempfile`
+elif [[ "`which mktemp 2> /dev/null`" != "" ]]; then
+  FILENAME=`mktemp`
+else
+  FILENAME="/tmp/resolvevars.$$"
+fi
+
+echo 'cat <<END_OF_TEXT' >  $FILENAME
+cat "$1"                 >> $FILENAME
+echo 'END_OF_TEXT'       >> $FILENAME
+ANSWER=`bash $FILENAME`
+rm $FILENAME
+echo $ANSWER
