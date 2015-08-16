@@ -1,0 +1,95 @@
+#!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
+# set -euo pipefail ; IFS=$'\n\t'
+
+#-----------
+# Configurations
+#-----------
+
+LAUNCHER_OWNER=${LAUNCHER_OWNER-root}
+LAUNCHER_PASSWORD=${LAUNCHER_PASSWORD-ruF1ngK1dd1ng}
+DEPLOYKEYS_KEYNAME=${DEPLOYKEYS_KEYNAME-id_dsa}
+DEPLOYKEYS_KNOWN_HOSTS=${DEPLOYKEYS_KNOWN_HOSTS-known_hosts}
+DEPLOYKEYS_ADD_GITHUB=${DEPLOYKEYS_ADD_GITHUB-false}
+DEPLOYKEYS_ADD_BITBUCKET=${DEPLOYKEYS_ADD_BITBUCKET-false}
+SSHKEYS=${SSHKEYS=false}
+
+#-----------
+# Install Script
+#-----------
+
+notify "Installing deploykeys ..."
+
+if [[ "$LOGLEVEL" -le "$DEBUG_LEVEL" ]]; then
+  DEPLOYKEYS_OUTPUT=/tmp/deploykeys_install.log
+else
+  DEPLOYKEYS_OUTPUT=/dev/null
+fi
+
+if [[ "$SSHKEYS" == true ]]; then
+  OWNER=$USER TARGET_DIR=$HOME/.ssh ./bits/deploykeys/keygen
+fi
+
+if [[ "`which expect 2> /dev/null`" == "" ]]; then
+  notify "  -- Installing expect"
+  if [[ "$OS" == "redhat" ]] || [[ "$OS" == "centos" ]]; then
+    debug "  -- yum install expect -y"
+    yum install expect -y > $DEPLOYKEYS_OUTPUT 2>&1
+    debug_all $DEPLOYKEYS_OUTPUT
+  else
+    debug "  -- apt-get install expect -y"
+    DEBIAN_FRONTEND=noninteractive apt-get install expect -y > $DEPLOYKEYS_OUTPUT 2>&1
+    debug_all $DEPLOYKEYS_OUTPUT
+  fi
+else
+  debug "  -- expect already installed"
+fi
+
+if [[ "$USER" == "$LAUNCHER_OWNER" ]]; then
+  debug " -- User $LAUNCHER_OWNER exists, nothing to do"
+else
+  GROUP=www-data LAUNCHER_OWNER=$LAUNCHER_OWNER PASSWD=$LAUNCHER_PASSWORD SSHKEYS=true ./bits/deploykeys/adduser
+  [ $? -ne 0 ] && exit 1
+fi
+
+if [[ "`which getent 2> /dev/null`" != "" ]]; then
+  debug "  -- Using getent to find home directory of $LAUNCHER_OWNER"
+  USER_HOME="$(getent passwd $LAUNCHER_OWNER | awk -F ':' '{print $6}')"
+elif [[ "$LAUNCHER_OWNER" == root  ]]; then
+  debug "  -- Assuming /root home directory for $LAUNCHER_OWNER"
+  USER_HOME=/root
+elif [[ -e "/home/$LAUNCHER_OWNER" ]]; then
+  debug "  -- Assuming /home/$LAUNCHER_OWNER home directory for $LAUNCHER_OWNER"
+  USER_HOME=/home/$LAUNCHER_OWNER
+elif [[ "$LAUNCHER_OWNER" == "$USER" ]]; then
+  debug "  -- Using \$HOME as the home directory current user $USER"
+  USER_HOME=$HOME
+else
+  error "Unable to determine the home directory of $LAUNCHER_OWNER"
+  exit 1
+fi
+
+debug "  -- Home directory: $USER_HOME"
+
+mkdir -p ${USER_HOME}/.ssh
+
+if [[ -e ./assets/${DEPLOYKEYS_KNOWN_HOSTS} ]]; then
+  notify "  -- Setting ${USER_HOME}/.ssh/known_hosts"
+  cp ./assets/${DEPLOYKEYS_KNOWN_HOSTS} ${USER_HOME}/.ssh/known_hosts
+else
+  debug "  -- No known hosts provided in ./assets/${DEPLOYKEYS_KNOWN_HOSTS}"
+fi
+
+if [[ "$DEPLOYKEYS_ADD_GITHUB" == true ]]; then
+  LAUNCHER_OWNER=$LAUNCHER_OWNER DEPLOYKEYS_HOSTNAME=github DEPLOYKEYS_URL=github.com ./bits/deploykeys/add
+else
+  debug "  -- Skipping github keys"
+fi
+
+if [[ "$DEPLOYKEYS_ADD_BITBUCKET" == true ]]; then
+  LAUNCHER_OWNER=$LAUNCHER_OWNER DEPLOYKEYS_HOSTNAME=bitbucket DEPLOYKEYS_URL=bitbucket.org ./bits/deploykeys/add
+else
+  debug "  -- Skipping bitbucket keys"
+fi
+
+notify "DONE, Installing deploykeys."

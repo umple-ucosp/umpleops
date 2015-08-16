@@ -1,0 +1,12 @@
+#!/bin/bash
+KEY=$KEY
+USER=$USER
+AUTH_FILE=${AUTH_FILE-"~/.ssh/authorized_keys"}
+
+if [[ ! -e $AUTH_FILE ]]; then
+  echo "  -- Creating $AUTH_FILE and adding access to $USER"
+  echo "$KEY" >> $AUTH_FILE
+elif [[ "`cat $AUTH_FILE | grep "$KEY"`" == '' ]]; then
+  echo "  -- Adding $USER key to $AUTH_FILE"
+  echo "$KEY" >> $AUTH_FILE
+fi

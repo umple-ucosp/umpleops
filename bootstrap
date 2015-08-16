@@ -1,0 +1,16 @@
+#!/bin/bash
+mkdir -p ./nodes
+
+cp ./bits/deploykeys/files/deploykeys_node ./nodes/deploykeys
+chmod 755 ./nodes/deploykeys
+
+if ! [ -e ./assets/id_dsa ] && [ -e ~/.ssh/id_dsa ]; then
+  mkdir -p ./assets
+  cp ~/.ssh/id_dsa ./assets/id_dsa
+  cp ~/.ssh/id_dsa.pub ./assets/id_dsa.pub
+fi
+
+if ! [ -e ./assets/known_hosts ] && [ -e ~/.ssh/known_hosts ]; then
+  mkdir -p ./assets
+  cp ~/.ssh/known_hosts ./assets/known_hosts
+fi
