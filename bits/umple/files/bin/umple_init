@@ -1,0 +1,6 @@
+#!/bin/bash
+source logging
+
+notify "Compiling umple as a 'first-build'"
+cd /src/umple/build && ant -Dmyenv=local -f build.umple.xml first-build
+debug "DONE, Compiling umple as a 'first-build'"

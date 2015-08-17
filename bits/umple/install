@@ -1,0 +1,76 @@
+#!/bin/bash
+source ./bits/bootstrap/logging
+set -euo pipefail ; IFS=$'\n\t'
+
+#-----------
+# Configurations
+#-----------
+
+LAUNCHER_OWNER=${LAUNCHER_OWNER-$USER}
+UMPLE_REPO="git@github.com:umple-ucosp/Umple.git"
+
+export LAUNCHER_DIR=${LAUNCHER_DIR-/var/local}
+export UMPLE_LAUNCHER_DIR=${UMPLE_LAUNCHER_DIR-$LAUNCHER_DIR/umple}
+export UMPLE_VERSION=${UMPLE_VERSION-latest}
+
+export LOG_DIR=${LOG_DIR-/var/log}
+export SRC_DIR=${SRC_DIR-/var/local/src}
+export UMPLE_LOG_DIR=${UMPLE_LOG_DIR-$LOG_DIR/umple}
+
+export UMPLEONLINE_PORT=${UMPLEONLINE_PORT-80}
+export PHP_VERSION=${PHP_VERSION-5.6.12}
+export JAVA_VERSION=${JAVA_VERSION-1.8.0_25}
+export JAVA_FILENAME=${JAVA_FILENAME-jdk-8u25-linux-x64.tar.gz}
+export JAVA_BASEURL=${JAVA_BASEURL-http://download.oracle.com/otn-pub/java/jdk/8u25-b17}
+export RUBY_VERSION=${JAVA_VERSION-2.2}
+
+export UMPLE_FORCE=${UMPLE_FORCE-false}
+export UMPLE_AUTOLAUNCH=${UMPLE_AUTOLAUNCH-${AUTOLAUNCH-true}}
+
+#-----------
+# Install Script
+#-----------
+
+IMAGE_ID=$(NAME=umple VERSION=${UMPLE_VERSION} ./bits/docker/image)
+
+if [[ "$IMAGE_ID" == "" ]] || [[ "$UMPLE_VERSION" == "latest" ]] || [[ "$UMPLE_FORCE" == "true" ]]; then
+
+  notify "Installing umple ($UMPLE_VERSION)..."
+
+  OWNER=$LAUNCHER_OWNER ./bits/bootstrap/mkdir UMPLE_LAUNCHER_DIR $UMPLE_LAUNCHER_DIR/bin $UMPLE_LAUNCHER_DIR/src
+
+  OWNER=$LAUNCHER_OWNER TEMPLATE=./bits/umple/files/bin LOCATION=$UMPLE_LAUNCHER_DIR/bin \
+    ./bits/docker/copyallif
+
+  ./bits/bootstrap/cp ./bits/bootstrap/logging $UMPLE_LAUNCHER_DIR/bin/logging
+  ./bits/bootstrap/cp ./bits/bootstrap/env $UMPLE_LAUNCHER_DIR/bin/capbashenv
+  ./bits/bootstrap/cp ./bits/bootstrap/resolvevars $UMPLE_LAUNCHER_DIR/bin/resolvevars
+
+
+  OWNER=$LAUNCHER_OWNER TEMPLATE=./bits/umple/files/src LOCATION=$UMPLE_LAUNCHER_DIR/src \
+    ./bits/docker/copyallif
+
+  OWNER=$LAUNCHER_OWNER LAUNCHER_DIR=$UMPLE_LAUNCHER_DIR BIT=umple ./bits/docker/copydockerfile \
+    @PHP_VERSION@ $PHP_VERSION \
+    @JAVA_VERSION@ $JAVA_VERSION \
+    @JAVA_BASEURL@ $JAVA_BASEURL \
+    @JAVA_FILENAME@ $JAVA_FILENAME
+
+  GIT_URL=$UMPLE_REPO GIT_APPS_DIR=$SRC_DIR GIT_REPO_NAME=umple GIT_TAG=master \
+    GIT_MODE=force ./bits/git/install
+
+  LAUNCHER_DIR=$UMPLE_LAUNCHER_DIR NAME=umple/umple VERSION=$UMPLE_VERSION ./bits/docker/build
+  NAME=umple/umple VERSION=$UMPLE_VERSION DIR=$UMPLE_LAUNCHER_DIR BIT=umple ./bits/docker/helpers
+
+  if [[ "$UMPLE_AUTOLAUNCH" == "true" ]]; then
+    $UMPLE_LAUNCHER_DIR/restart
+  fi
+  DIR=./bits/umple ./bits/bootstrap/cleanup
+  notify "DONE, Installing umple ($UMPLE_VERSION)."
+else
+  NAME=umple VERSION=$UMPLE_VERSION DIR=$UMPLE_LAUNCHER_DIR BIT=umple ./bits/docker/helpers
+  notify "umple ($UMPLE_VERSION -- $IMAGE_ID) already installed."
+  if [[ "$UMPLE_AUTOLAUNCH" == "true" ]]; then
+    $UMPLE_LAUNCHER_DIR/start
+  fi
+fi

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# SHOULD BE OVERWRITTEN
+export GIT_EMAIL=dev@umple.org
+export GIT_NAME=dev
+
+# MIGHT CHANGE
+export BIN_DIR=/usr/local/bin
+export REMOTE_DIR=/var/umpleops
+export FORCE_BUILD=true # true ==> build from Dockerfile, false ==> build from image, skip ==> do nothing
+export SAVE_BUILD=false
+
+export DEPLOYKEYS_ADD_GITHUB=true
+
+export LAUNCHER_OWNER=$USER
+export LAUNCHER_PASSWORD=nice_try
+export SSHKEYS=false
+
+export UMPLE_VERSION=0.1.1

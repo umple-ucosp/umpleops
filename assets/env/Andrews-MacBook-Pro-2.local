@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# SHOULD BE OVERWRITTEN
+export GIT_EMAIL=aforward@gmail.com
+export GIT_NAME=aforward
+
+export BIN_DIR=$HOME/.bin
+
+export DATA_DIR=$HOME/data
+export LOG_DIR=$HOME/log
+export SRC_DIR=$HOME/sin/obj/project/uottawa
+export LAUNCHER_DIR=$HOME/launcher
+export SENSITIVE_DIR=$HOME/sensitive
+
+export AUTOLAUNCH=false
+export UMPLE_FORCE=true

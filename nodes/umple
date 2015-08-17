@@ -1,0 +1,6 @@
+#!/bin/bash
+
+source ./bits/bootstrap/env
+source ./bits/bootstrap/install
+
+./bits/umple/install
