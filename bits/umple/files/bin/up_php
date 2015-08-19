@@ -1,0 +1,18 @@
+#!/bin/bash
+HOST=${HOST-0.0.0.0}
+PORT=${PORT-80}
+DAEMON=${DAEMON-false}
+DIR=${DIR-.}
+DOCROOT=${DOCROOT-""}
+
+if [[ "$DOCROOT" == "" ]]; then
+  DOCROOT_FLAG=""
+else
+  DOCROOT_FLAG="-t $DOCROOT"
+fi
+
+if [[ "$DAEMON" = "true" ]]; then
+  (cd $DIR && nohup php -S $HOST:$PORT $DOCROOT_FLAG &)
+else
+  (cd $DIR && php -S $HOST:$PORT $DOCROOT_FLAG)
+fi

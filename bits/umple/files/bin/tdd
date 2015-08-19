@@ -1,0 +1,22 @@
+#!/bin/bash
+source logging
+
+TESTNAME=$1
+LOGLEVEL=${LOGLEVEL-1}
+DIR=${DIR-/src/umple/build}
+
+if [[ "$LOGLEVEL" == "0" || "$LOGLEVEL" == "1" ]]; then
+  SHOW_JUNIT_OUTPUT=true
+else
+  SHOW_JUNIT_OUTPUT=false
+fi
+
+if [[ "$TESTNAME" == "" ]]; then
+  notify "Running all umple tests ($DIR)"
+  (cd $DIR && ant -Dmyenv=local -DshowJunitOutput=$SHOW_JUNIT_OUTPUT -f build.umple.xml resetUmpleSelf compile template.test)
+  debug "DONE, Running all umple tests ($DIR)"
+else
+  notify "Running tests for $TESTNAME ($DIR)"
+  (cd $DIR && ant -Dmyenv=local -DshowJunitOutput=$SHOW_JUNIT_OUTPUT -Djunit=$TESTNAME -f build.umple.xml resetUmpleSelf compile template.test)
+  debug "DONE, Running tests for $TESTNAME ($DIR)"
+fi

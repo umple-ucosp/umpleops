@@ -16,4 +16,4 @@ export LAUNCHER_OWNER=$USER
 export LAUNCHER_PASSWORD=nice_try
 export SSHKEYS=false
 
-export UMPLE_VERSION=0.1.1
+export UMPLE_VERSION=0.3.0

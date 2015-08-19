@@ -1,0 +1,5 @@
+#!/bin/bash
+umple_init
+DIR=/src/umple/dist/qa DAEMON=true up_tdd
+DIR=/src/umple/umpleonline DAEMON=true up_umpleonline
+DIR=/data/cdn DAEMON=true up_cdn

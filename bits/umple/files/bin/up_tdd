@@ -1,0 +1,5 @@
+#!/bin/bash
+DAEMON=${DAEMON-false}
+PORT=${PORT-8081}
+DIR=${DIR-.}
+DIR=${DIR} DAEMON=$DAEMON PORT=$PORT up_php

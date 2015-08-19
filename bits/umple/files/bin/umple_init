@@ -1,6 +1,28 @@
 #!/bin/bash
 source logging
 
-notify "Compiling umple as a 'first-build'"
-cd /src/umple/build && ant -Dmyenv=local -f build.umple.xml first-build
-debug "DONE, Compiling umple as a 'first-build'"
+if [[ ! -e /src/umple/dist/umple.jar ]]; then
+  notify "Compiling umple as a 'first-build'"
+  cd /src/umple/build && ant -Dmyenv=local -f build.umple.xml first-build
+  debug "DONE, Compiling umple as a 'first-build'"
+else
+  debug "Umple already compiled, skipping 'first-build'"
+fi
+
+if [[ ! -e /src/umple/umpleonline/index.php ]]; then
+  notify "Creating an index.php symlink for umpleoline"
+  ln -s /src/umple/umpleonline/umple.php /src/umple/umpleonline/index.php
+  debug "DONE, Creating an index.php symlink for umpleoline"
+else
+  debug "Umpleonline already has an index.php, no symlink required."
+fi
+
+notify "Creating a QA page (exposed on port 8081)"
+mkdir -p /src/umple/dist/qa
+cp /opt/src/qa_index.php /src/umple/dist/qa/index.php
+debug "DONE, Creating a QA page (exposed on port 8081)"
+
+notify "Creating a local CDN (exposed on port 8082)"
+mkdir -p /data/cdn
+cp /opt/src/cdn_index.php /data/cdn/index.php
+debug "DONE, Creating a QA page (exposed on port 8081)"
